@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout
 
 
 class MainViewWindow(QMainWindow):
@@ -9,4 +9,11 @@ class MainViewWindow(QMainWindow):
 
 
     def initUI(self):
-        pass
+
+        self.setWindowTitle(self.tr("PressureCalibration"))
+        self.setMinimumSize(700, 450)
+        # self.setWindowIcon(QIcon(f'{os.getcwd()}\\logo.ico'))
+
+        self.widget = QWidget(self)
+        self.setCentralWidget(self.widget)
+        self.layout = QHBoxLayout(self.widget)

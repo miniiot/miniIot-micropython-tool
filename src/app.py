@@ -33,7 +33,7 @@ class MainViewWindow(QMainWindow):
         self.status_bar_progress = QProgressBar()
         self.status_bar_progress.setMinimum(0)
         self.status_bar_progress.setMaximum(100)
-        self.status_bar_progress.setValue(30)
+        self.status_bar_progress.setValue(0)
         self.status_bar_progress.setMaximumHeight(15)
         self.status_bar_progress.setMaximumWidth(150)
 
@@ -164,33 +164,111 @@ class MainViewWindow(QMainWindow):
     def on_setup_btn_click_callback(self):
         if len(self.current_file_select_list.get_list_path()) == 0:
             return
-
+        print([str(s) for s in self.current_file_select_list.get_list_path()])
         mpy_ver = self.versions_select_combo.currentText()
         mpy_sys = self.sys_select_combo.currentText()
         commands = []
+        # relatively_path = []
+        build_path = []
 
         for path in self.current_file_select_list.get_list_path():
-            if os.path.isdir(path):
-                sub_path = [f for f in Path(path).rglob("*") if f.is_file()]
+
+            if path.is_dir():
+                sub_path = [f for f in path.rglob("*") if f.is_file()]
                 for sub in sub_path:
                     if sub.suffix != ".py":
                         continue
+
+                    rela_path = self.get_relatively_path(path, sub)
+                    build_path.append((sub.with_suffix(".mpy"), rela_path[0].with_suffix(".mpy")))
                     command = (os.path.join(os.environ.get(f"MPY_CROSS_{mpy_ver}"), "mpy-cross"),
                                f"-march={mpy_sys}",
                                str(sub))
+                    print(str(sub))
                     commands.append(command)
 
-            elif os.path.isfile(path) and path.endswith(".py"):
-
+            elif path.is_file() and path.suffix == ".py":
+                rela_path = self.get_relatively_path(path, path)
+                build_path.append((path.with_suffix(".mpy"), rela_path[0].with_suffix(".mpy")))
                 command = (os.path.join(os.environ.get(f"MPY_CROSS_{mpy_ver}"), "mpy-cross"),
                            f"-march={mpy_sys}",
-                           str(Path(path)))
+                           str(path))
                 commands.append(command)
+                print(str(Path(path)))
             else:
                 continue
-        print(commands)
-
-        self._thread = UpDateThread(commands)
+        # print(commands)
+        print(build_path)
+        self._thread = UpDateThread(commands,build_path)
         # self._thread.run_result_signal.connect(self.on_read_update_data_callback)
         # self._thread.run_done_signal.connect(self.on_run_done_callback)
+        self._thread.run_progress_signal.connect(self.on_thread_progress_callback)
         self._thread.start()
+
+    def on_thread_progress_callback(self,value):
+        if value == -1:
+            self.status_bar_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid;
+                text-align: center;
+            }
+
+            QProgressBar::chunk {
+                background-color: #ff0000;
+                width: 50px;
+            }
+            """)
+            self.status_bar_label.setText(self.tr("build failed"))
+
+        else:
+            self.status_bar_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid;
+                text-align: center;
+            }
+
+            QProgressBar::chunk {
+                background-color: #02913a;
+                width: 50px;
+            }
+            """)
+            self.status_bar_label.setText(self.tr("build ..."))
+
+        if value >= 100:
+            self.status_bar_label.setText(self.tr("build done"))
+
+
+        self.status_bar_progress.setValue(value)
+        self.status_bar_progress.show()
+        self.status_bar_label.show()
+
+
+
+    def get_relatively_path(self, compare_path: Path, absolute_path: Path):
+        if absolute_path.is_dir():
+            absolute_path = [f for f in absolute_path.rglob("*") if f.is_file()]
+        elif absolute_path.is_file() and absolute_path.suffix == ".py":
+            absolute_path = [absolute_path]
+        else:
+            return []
+
+        if compare_path.is_file() and compare_path.suffix == ".py":
+            compare_path = compare_path.parent
+        elif compare_path.is_dir():
+            compare_path = compare_path.parent
+        else:
+            return []
+
+        paths = []
+
+        for path in absolute_path:
+            p = Path(path)
+            try:
+                p = p.relative_to(compare_path)
+                paths.append(p)
+            except:
+                pass
+
+        return paths
+
+

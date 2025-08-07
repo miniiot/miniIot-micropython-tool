@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+from pathlib import Path
+from typing import List
 
 import qdarktheme
 from PySide6.QtGui import QPainter, QFont, QColor
@@ -36,14 +38,16 @@ class FileListWidget(QListWidget):
                 path = url.toLocalFile()
                 if not path:
                     continue
+                path = Path(path)
                 item = QListWidgetItem()
                 item.setSizeHint(QSize(100, 35))
-                if os.path.isdir(path):
+                if path.is_dir():
                     widget = CustomListItemWidget(str(path), "folder.svg")
-                elif os.path.isfile(path) and path.endswith(".py"):
+                elif path.is_file() and path.suffix == ".py":
                     widget = CustomListItemWidget(str(path), "python.svg")
                 else:
                     widget = CustomListItemWidget(str(path), "file.svg")
+
                 self._file_path_list.append(path)
 
                 self.addItem(item)
@@ -60,7 +64,7 @@ class FileListWidget(QListWidget):
             # self.removeItemWidget()
             self.takeItem(row)
 
-    def get_list_path(self):
+    def get_list_path(self) -> List[Path]:
         return self._file_path_list
 
 

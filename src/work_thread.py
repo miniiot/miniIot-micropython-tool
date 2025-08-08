@@ -5,7 +5,7 @@ import subprocess
 import time
 import traceback
 import uuid
-
+import hashlib
 from PySide6.QtCore import QThread, Signal
 
 
@@ -71,8 +71,9 @@ class UpDateThread(QThread):
                 "version": 5,
                 "size": 5,
                 "dateTime": 5,
-                "info_len": 5}
-
+                "info_len": 5,
+                "md5":64}
+        sha256 = hashlib.sha256()
         with open(self.file_name, "wb") as f:
             f.write(b'MiniIotMicroPython;')
             f.write(b'by:KS;')
@@ -110,9 +111,12 @@ class UpDateThread(QThread):
             for index, path in enumerate(self.mpy_file_list):
                 with open(path[0], "rb") as f3:
                     # print(f3.read())
-                    f.write(f3.read())
+                    byte = f3.read()
+                    f.write(byte)
+                    sha256.update(byte)
                     self._progress +=1
                     self.run_progress_signal.emit(self._progress)
 
+            f.write(sha256.digest())
 
 
